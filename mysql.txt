@@ -1,0 +1,13 @@
+CREATE USER 'radio'@'localhost' IDENTIFIED BY 'xxxx';
+
+GRANT ALL PRIVILEGES ON * . * TO 'radio'@'localhost';
+
+FLUSH PRIVILEGES;
+
+CREATE DATABASE radio;
+
+USE radio;
+
+(shell command is mysql -h localhost -u radio -p radio)
+
+
