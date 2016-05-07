@@ -51,13 +51,12 @@ def getEpisodes(episodesId):
 
 print("Radcliffe and Maconie...")
 # mainId = "b06vp9sm"
-episodesId = "b0100rp6"
-getEpisodes(episodesId)
+#episodesId = "b0100rp6"
+#getEpisodes(episodesId)
 
 # reset the list...
 # episodeIds = list()
-# print("People's Songs...")
-# mainId = "b01l9qb8"
-# episodesId = "b01l9qb8"
-# getEpisodes(episodesId)
+print("People's Songs...")
+episodesId = "b01l9qb8"
+getEpisodes(episodesId)
 
