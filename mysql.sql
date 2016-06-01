@@ -17,7 +17,7 @@ CREATE TABLE programme
 (
     p_id VARCHAR(36) NOT NULL
     ,p_name VARCHAR(100) NOT NULL
-    ,PRIMARY KEY pid_pk (p_id)
+    ,PRIMARY KEY (p_id)
 );
 
 INSERT INTO programme (p_id, p_name) VALUES ('b01l9qb8', 'People''s Songs');
@@ -29,9 +29,12 @@ CREATE TABLE programme_episode
     ,pe_p_id VARCHAR(36) NOT NULL
     ,pe_title VARCHAR(255) NOT NULL
     ,pe_description TEXT
-    ,PRIMARY KEY pid_pk (pe_id)
+    ,PRIMARY KEY (pe_id)
     ,CONSTRAINT pe_p_fk FOREIGN KEY (pe_p_id) REFERENCES programme (p_id)
 );
+
+insert into programme_episode (pe_id, pe_p_id, pe_title, pe_description) VALUES ('p43h2o3', 'b0100rp6', 'John Grant', 'Fish and Chips for the Ears, with contributions from the likes of JH via GnipTwitter');
+
 
 from mysql.connector import (connection)
 
