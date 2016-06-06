@@ -9,6 +9,8 @@ import psycopg2
 import configparser
 import subprocess
 import http.client
+import schedule
+import time
 
 def connectToDatabase():
     cfg = configparser.ConfigParser()
@@ -154,20 +156,6 @@ def pushNotifyDownload(title, episodeId):
         notifyMessage = "{}: {}".format(episodes[0], episodes[1])
         pushNotify(title, notifyMessage)
 
-def downloadProgrammes():
-    programmes = list()
-    conn = connectToDatabase()
-    cur = conn.cursor()
-    cur.execute("""SELECT p_id, p_name FROM programme WHERE p_download = TRUE;""")
-
-    for row in cur:
-        programmes.append(row)
-
-    cur.close()
-    conn.close()
-    for programme in programmes:
-        getNewEpisodes(programme)
-
 def pushNotify(title, notificationMessage):
     pushoverAppToken = """ae9h7svvn8f8u41rks4w9s12w33mqk"""
     pushoverNotificationList = """gsc5g1f1cjvovbqf9zepdtt9tocdyr"""
@@ -181,5 +169,28 @@ def pushNotify(title, notificationMessage):
         }), { "Content-type": "application/x-www-form-urlencoded" })
     conn.getresponse()
 
-downloadProgrammes()
-downloadNewEpisodes()
+def findAndDownloadNewProgrammeEpisodes():
+    programmes = list()
+    conn = connectToDatabase()
+    cur = conn.cursor()
+    cur.execute("""SELECT p_id, p_name FROM programme WHERE p_download = TRUE;""")
+
+    for row in cur:
+        programmes.append(row)
+
+    cur.close()
+    conn.close()
+
+    # find details of new episodes of each programme
+    for programme in programmes:
+        getNewEpisodes(programme)
+
+    # any new episodes collected are now downloaded
+    downloadNewEpisodes()
+
+# set up a schedule to look for (and download) new episodes every X minutes
+schedule.every(15).minutes.do(findAndDownloadNewProgrammeEpisodes)
+
+while True:
+    schedule.run_pending()
+    time.sleep(1)
