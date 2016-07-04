@@ -12,6 +12,9 @@ import http.client
 import schedule
 import time
 
+mockDownload = True
+runImmediate = True
+
 def connectToDatabase():
     cfg = configparser.ConfigParser()
     cfg.read('./runtime.properties')
@@ -24,7 +27,11 @@ def connectToDatabase():
 def saveToDatabase(episodeId, programmeId, episodeTitle, episodeDesc, broadcastTime):
     conn = connectToDatabase()
     cur = conn.cursor()
-    episodeTime = parse(broadcastTime)
+    if broadcastTime is not None:
+        episodeTime = parse(broadcastTime)
+    else:
+        episodeTime = None
+
     cur.execute(
         """INSERT INTO programme_episode (pe_id, pe_p_id, pe_title, pe_description, pe_broadcast_ts, pe_found_ts) VALUES (%s, %s, %s, %s, %s, NOW());""",
             (episodeId, programmeId, episodeTitle, episodeDesc, episodeTime))
@@ -75,7 +82,10 @@ def processEpisode(progId, progName, episodeId, episodeUrl):
 
         print(epDesc)
         broadcastTimeDiv = epBs.find("div",{"class","broadcast-event__time"})
-        broadcastTime = broadcastTimeDiv.attrs["content"]
+        if broadcastTimeDiv is not None:
+            broadcastTime = broadcastTimeDiv.attrs["content"]
+        else:
+            broadcastTime = None
         saveToDatabase(episodeId, progId, epTitle, epDesc, broadcastTime)
     else:
         print("Episode {} already saved".format(episodeId,))
@@ -120,14 +130,22 @@ def downloadNewEpisodes():
 
 def downloadEpisode(episodeId):
     pushNotifyDownload("Download Starting", episodeId)
+    if mockDownload:
+        downloadEpisodePretend(episodeId)
+    else:
+        downloadEpisodeForReal(episodeId)
+    updateEpisodeAsDownloaded(episodeId)
+
+def downloadEpisodeForReal(episodeId):
     subprocess.call(
         ["get_iplayer",
             "--pid",
             episodeId,
             "--modes=flashaaclow,flashaacstd,hlsaacstd,rtspaaclow,rtspaacstd"]
     )
-    # print("get_iplayer --pid " + episodeId + " --modes=flashaaclow,flashaacstd,hlsaacstd,rtspaaclow,rtspaacstd")
-    updateEpisodeAsDownloaded(episodeId)
+
+def downloadEpisodePretend(episodeId):
+    print("PRETENDING TO RUN: get_iplayer --pid " + episodeId + " --modes=flashaaclow,flashaacstd,hlsaacstd,rtspaaclow,rtspaacstd")
 
 def updateEpisodeAsDownloaded(episodeId):
     conn = connectToDatabase()
@@ -188,9 +206,18 @@ def findAndDownloadNewProgrammeEpisodes():
     # any new episodes collected are now downloaded
     downloadNewEpisodes()
 
-# set up a schedule to look for (and download) new episodes every X minutes
-schedule.every(15).minutes.do(findAndDownloadNewProgrammeEpisodes)
+def runScheduled():
+    # set up a schedule to look for (and download) new episodes every X minutes
+    schedule.every(15).minutes.do(findAndDownloadNewProgrammeEpisodes)
 
-while True:
-    schedule.run_pending()
-    time.sleep(1)
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+def runNow():
+    findAndDownloadNewProgrammeEpisodes()
+
+if (runImmediate):
+    runNow()
+else:
+    runScheduled()
