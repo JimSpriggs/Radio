@@ -12,16 +12,20 @@ import http.client
 import schedule
 import time
 
-mockDownload = True
-runImmediate = True
+
+cfg = configparser.RawConfigParser()
+cfg.read('./runtime.properties')
+dbName = cfg.get('database', 'database', raw=True)
+dbUserName = cfg.get('database', 'user', raw=True)
+dbPassword = cfg.get('database', 'password', raw=True)
+
+pushoverAppToken = cfg.get('notification','pushover.app.token')
+pushoverNotificationList = cfg.get('notification','pushover.notification.list')
+
+mockDownload = cfg.getboolean('general', 'mockDownload', raw=True)
+useSchedule = cfg.getboolean('general', 'runScheduled', raw=True)
 
 def connectToDatabase():
-    cfg = configparser.ConfigParser()
-    cfg.read('./runtime.properties')
-    dbName = cfg.get('database', 'database', raw=True)
-    dbUserName = cfg.get('database', 'user', raw=True)
-    dbPassword = cfg.get('database', 'password', raw=True)
-
     return psycopg2.connect(database=dbName, user=dbUserName, password=dbPassword)
 
 def saveToDatabase(episodeId, programmeId, episodeTitle, episodeDesc, broadcastTime):
@@ -175,8 +179,6 @@ def pushNotifyDownload(title, episodeId):
         pushNotify(title, notifyMessage)
 
 def pushNotify(title, notificationMessage):
-    pushoverAppToken = """ae9h7svvn8f8u41rks4w9s12w33mqk"""
-    pushoverNotificationList = """gsc5g1f1cjvovbqf9zepdtt9tocdyr"""
     conn = http.client.HTTPSConnection("api.pushover.net:443")
     conn.request("POST", "/1/messages.json",
         urllib.parse.urlencode({
@@ -217,7 +219,7 @@ def runScheduled():
 def runNow():
     findAndDownloadNewProgrammeEpisodes()
 
-if (runImmediate):
-    runNow()
-else:
+if (useSchedule):
     runScheduled()
+else:
+    runNow()
