@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import urllib
+from urllib.error import HTTPError
 from urllib.request import urlopen
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -44,7 +45,16 @@ def saveToDatabase(episodeId, programmeId, episodeTitle, episodeDesc, broadcastT
     conn.close()
 
 def getEpisodesFromProgrammePage(progId, progName, progUrl):
-    html = urlopen("http://www.bbc.co.uk" + progUrl)
+    url = "http://www.bbc.co.uk" + progUrl
+    try:
+        html = urlopen(url)
+    except HTTPError as err:
+        print("Unable to access programme page {}, error: {}".format(url, err))
+        raise
+    except TimeoutError as err:
+        print("Timeout accessing page {}, error: {}".format(url, err))
+        raise
+
     bsObj = BeautifulSoup(html.read(), "html.parser")
 
     # recursively find the next page link and move to it
@@ -53,13 +63,24 @@ def getEpisodesFromProgrammePage(progId, progName, progUrl):
         nextPage = nextPage.find("a")
         if nextPage is not None:
             nextPageUrl = nextPage.attrs["href"]
-            getEpisodesFromProgrammePage(progId, progName, nextPageUrl)
+            try:
+                getEpisodesFromProgrammePage(progId, progName, nextPageUrl)
+            except HTTPError as err:
+                print("Unable to access programme page {}, error: {}".format(nextPageUrl, err))
+            except TimeoutError as err:
+                print("Timeout accessing programme page {}, error: {}".format(nextPageUrl, err))
 
     # no more next page links, so process the items on the current page (in reverse order)
     print("Loading programme details from http://www.bbc.co.uk" + progUrl + "...")
     episodes = bsObj.findAll("div", {"class":"programme--episode"})
     for episode in reversed(list(episodes)):
-        processEpisode(progId, progName, episode.attrs["data-pid"], episode.attrs["resource"])
+        try:
+            processEpisode(progId, progName, episode.attrs["data-pid"], episode.attrs["resource"])
+        except HTTPError as err:
+            print("Unable to process episode {}, error: {}".format(episode.attrs["data-pid"], err))
+        except TimeoutError as err:
+            print("Timeout accessing episode {}, error: {}".format(episode.attrs["data-pid"], err))
+
 
 def processEpisode(progId, progName, episodeId, episodeUrl):
     if (isEpisodeNew(progId, episodeId)):
@@ -203,10 +224,17 @@ def findAndDownloadNewProgrammeEpisodes():
 
     # find details of new episodes of each programme
     for programme in programmes:
-        getNewEpisodes(programme)
+        try:
+            getNewEpisodes(programme)
+        except Exception as err:
+            print("Unable to get new episodes - will try again later [detail: {}]".format(err,))
 
     # any new episodes collected are now downloaded
-    downloadNewEpisodes()
+    try:
+        downloadNewEpisodes()
+    except Exception as err:
+        print("Unable to download new episodes - will try again later [detail: {}]".format(err, ))
+
 
 def runScheduled():
     # set up a schedule to look for (and download) new episodes every X minutes
