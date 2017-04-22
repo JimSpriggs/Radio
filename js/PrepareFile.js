@@ -18,10 +18,10 @@ function isEpisodeTitleLegacyDateOnly(episodeTitle, broadcastDate) {
     return (episodeTitle === broadcastDate.format(LEGACY_DATE_ONLY_EPISODE_TITLE_FORMAT));
 }
 
-function updateEpisodeMetaData(fullPath, data) {
+function updateEpisodeMetaData(fileDetails, data) {
     var episodeTitle = data.title;
     console.log("        Would update title to %s", episodeTitle);
-    ffmetadata.write(fullPath, data, function(err, data) {
+    ffmetadata.write(fileDetails.fullPath, data, function(err, data) {
         if (err) console.error("Error writing metadata", err);
         else {
             console.log("File updated with title %s", episodeTitle);
@@ -33,8 +33,8 @@ function fileNameBeginsWith(file, beginning) {
     return (file.substr(0, beginning.length) === beginning);
 }
 
-function checkAndUpdateFileName(showDir, file, beginning, newBeginning, broadcastDate) {
-    var fileEnding = file.substr(beginning.length);
+function checkAndUpdateFileName(fileDetails, beginning, newBeginning, broadcastDate) {
+    var fileEnding = fileDetails.file.substr(beginning.length);
     console.log("File ending: %s", fileEnding);
     var newFileName = newBeginning;
     if (fileEnding.substr(0, DATE_FORMAT.length) === broadcastDate.format(DATE_FORMAT)) {
@@ -45,25 +45,25 @@ function checkAndUpdateFileName(showDir, file, beginning, newBeginning, broadcas
         newFileName = newFileName.concat(broadcastDate.format(DATE_FORMAT), "_", fileEnding);
     }
 
-    if (file !== newFileName) {
-       console.log("New filename will be: %s", newFileName);
+    if (fileDetails.file !== newFileName) {
+        console.log("New filename will be: %s", newFileName);
     } else {
         console.log("No rename required");
     }
 }
 
-function updateEpisodeFileName(showDir, file, broadcastDate) {
+function updateEpisodeFileName(fileDetails, broadcastDate) {
     var oldTypeFileNameBeginning = SHOW_NAME.concat("-");
     var newTypeFileNameBeginning = SHOW_NAME.concat("_-_");
-    if (fileNameBeginsWith(file, oldTypeFileNameBeginning)) {
-        checkAndUpdateFileName(showDir, file, oldTypeFileNameBeginning, newTypeFileNameBeginning, broadcastDate);
-    } else if (fileNameBeginsWith(file, newTypeFileNameBeginning)) {
-        checkAndUpdateFileName(showDir, file, newTypeFileNameBeginning, newTypeFileNameBeginning, broadcastDate);
+    if (fileNameBeginsWith(fileDetails.file, oldTypeFileNameBeginning)) {
+        checkAndUpdateFileName(fileDetails, oldTypeFileNameBeginning, newTypeFileNameBeginning, broadcastDate);
+    } else if (fileNameBeginsWith(fileDetails.file, newTypeFileNameBeginning)) {
+        checkAndUpdateFileName(fileDetails, newTypeFileNameBeginning, newTypeFileNameBeginning, broadcastDate);
     }
 }
 
-function readAndUpdateEpisodeFile(showDir, file, fullPath) {
-    ffmetadata.read(fullPath, function (err, data) {
+function readAndUpdateEpisodeFile(fileDetails) {
+    ffmetadata.read(fileDetails.fullPath, function (err, data) {
         if (err) console.error("    ERROR READING METADATA", err);
         else {
             var episodeTitle = data.title;
@@ -75,15 +75,15 @@ function readAndUpdateEpisodeFile(showDir, file, fullPath) {
             if (!episodeTitle || isEpisodeTitleLegacyDateOnly(episodeTitle, broadcastDate)) {
                 episodeTitle = broadcastDate.format(DATE_FORMAT);
                 updateTitle = true;
-            } else if (episodeTitle.substr(0, 10) != broadcastDate) {
+            } else if (episodeTitle.substr(0, 10) != broadcastDate.format(DATE_FORMAT)) {
                 episodeTitle = broadcastDate.format(DATE_FORMAT) + " - " + episodeTitle;
                 updateTitle = true;
             }
 
             if (updateTitle) {
                 data.title = episodeTitle;
-                updateEpisodeMetaData(fullPath, data);
-                updateEpisodeFileName(showDir, file, broadcastDate);
+                updateEpisodeMetaData(fileDetails, data);
+                updateEpisodeFileName(fileDetails, broadcastDate);
             } else {
                 console.log("        Leaving alone");
             }
@@ -91,28 +91,41 @@ function readAndUpdateEpisodeFile(showDir, file, fullPath) {
     });
 }
 
-var showDir = path.join(MEDIA_DIR, SHOW_NAME + "_TEST");
-fs.readdir( showDir, function( err, files ) {
-    if( err ) {
-        console.error( "Could not list the directory.", err );
-        process.exit( 1 );
-    }
+function readDirectoryAndProcessFiles(dir) {
+    fs.readdir( dir, function( err, files ) {
+        if( err ) {
+            console.error( "Could not list the directory.", err );
+            process.exit( 1 );
+        }
 
-    files
-        .filter(function(file) { return file.substr(-4) === '.mp3'; })
-        .forEach( function( file, index ) {
-            var fullPath = path.join( showDir, file );
+        files
+            .filter(function(file) { return file.substr(-4) === '.mp3'; })
+            .forEach( function( file, index ) {
+                var fileDetails = {
+                    dir: dir,
+                    file: file,
+                    fullPath: path.join(dir, file)
+                };
 
-            fs.stat( fullPath, function( error, stat ) {
-            if( error ) {
-                console.error( "Error stating file.", error );
-                return;
-            }
+                fs.stat( fileDetails.fullPath, function( error, stat ) {
+                    if( error ) {
+                        console.error( "Error stating file.", error );
+                        return;
+                    }
 
-            if( stat.isFile() ) {
-                console.log( "Processing file: %s", fullPath );
-                readAndUpdateEpisodeFile(showDir, file, fullPath);
-            }
-        } );
+                    if( stat.isFile() ) {
+                        console.log( "Processing file: %s", fileDetails.fullPath );
+                        readAndUpdateEpisodeFile(fileDetails);
+                    }
+                } );
+            } );
     } );
-} );
+}
+
+// readDirectoryAndProcessFiles(path.join(MEDIA_DIR, SHOW_NAME + "_TEST"));
+
+readAndUpdateEpisodeFile({
+    dir: "/Users/john/dev/js/radio/Radio/media/Radcliffe_and_Maconie_TEST",
+    file: "Radcliffe_and_Maconie-2015-12-09-Bryan_Ferry-b06qnl6l.mp3",
+    fullPath: "/Users/john/dev/js/radio/Radio/media/Radcliffe_and_Maconie_TEST/Radcliffe_and_Maconie-2015-12-09-Bryan_Ferry-b06qnl6l.mp3"
+});
