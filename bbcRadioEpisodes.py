@@ -84,7 +84,7 @@ def getEpisodesFromProgrammePage(progId, progName, progUrl):
 
 def processEpisode(progId, progName, episodeId, episodeUrl):
     if (isEpisodeNew(progId, episodeId)):
-        getIplayerCommand = "get_iplayer --pid " + episodeId + " --modes=flashaaclow,flashaacstd,hlsaacstd,rtspaaclow,rtspaacstd"
+        getIplayerCommand = "get_iplayer --preset=aactomp3 --pid " + episodeId + " --modes=daflow,dafstd,hlsaacstd,rtspaaclow,rtspaacstd"
         print(getIplayerCommand)
         epHtml = urlopen(episodeUrl)
         epBs = BeautifulSoup(epHtml.read(), "html.parser")
