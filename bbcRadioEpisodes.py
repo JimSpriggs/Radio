@@ -164,13 +164,14 @@ def downloadEpisode(episodeId):
 def downloadEpisodeForReal(episodeId):
     subprocess.call(
         ["get_iplayer",
+	    "--preset=aactomp3",
             "--pid",
             episodeId,
-            "--modes=flashaaclow,flashaacstd,hlsaacstd,rtspaaclow,rtspaacstd"]
+            "--modes=daflow,dafstd,hlsaacstd,rtspaaclow,rtspaacstd"]
     )
 
 def downloadEpisodePretend(episodeId):
-    print("PRETENDING TO RUN: get_iplayer --pid " + episodeId + " --modes=flashaaclow,flashaacstd,hlsaacstd,rtspaaclow,rtspaacstd")
+    print("PRETENDING TO RUN: get_iplayer --preset=aactomp3 --pid " + episodeId + " --modes=daflow,dafstd,hlsaacstd,rtspaaclow,rtspaacstd")
 
 def updateEpisodeAsDownloaded(episodeId):
     conn = connectToDatabase()
